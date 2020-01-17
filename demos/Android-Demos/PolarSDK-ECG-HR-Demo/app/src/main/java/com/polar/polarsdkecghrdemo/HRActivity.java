@@ -5,12 +5,11 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.androidplot.xy.BoundaryMode;
-import com.androidplot.xy.StepMode;
-import com.androidplot.xy.XYGraphWidget;
 import com.androidplot.xy.XYPlot;
 
 import java.text.DecimalFormat;
@@ -41,11 +40,9 @@ public class HRActivity extends AppCompatActivity implements PlotterListener {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_hr);
-        DEVICE_ID = getIntent().getStringExtra("id");
         textViewHR = findViewById(R.id.info2);
         textViewFW = findViewById(R.id.fw2);
-
-        plot = findViewById(R.id.plot2);
+        Button button=findViewById(R.id.button);
 
         api = PolarBleApiDefaultImpl.defaultImplementation(this,
                 PolarBleApi.FEATURE_BATTERY_INFO |
@@ -134,8 +131,10 @@ public class HRActivity extends AppCompatActivity implements PlotterListener {
                 if (msg.endsWith(",")) {
                     msg = msg.substring(0, msg.length() - 1);
                 }
+                Log.e("HR NOtification", "HR: " +polarHrData.hr);
+
+
                 textViewHR.setText(msg);
-                plotter.addValues(polarHrData);
             }
 
             @Override
@@ -149,23 +148,12 @@ public class HRActivity extends AppCompatActivity implements PlotterListener {
             a.printStackTrace();
         }
 
-        plotter = new TimePlotter(this, "HR/RR");
-        plotter.setListener(this);
+        button.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // Code here executes on main thread after user presses button
 
-        plot.addSeries(plotter.getHrSeries(), plotter.getHrFormatter());
-        plot.addSeries(plotter.getRrSeries(), plotter.getRrFormatter());
-        plot.setRangeBoundaries(50, 100,
-                BoundaryMode.AUTO);
-        plot.setDomainBoundaries(0, 360000,
-                BoundaryMode.AUTO);
-        // Left labels will increment by 10
-        plot.setRangeStep(StepMode.INCREMENT_BY_VAL, 10);
-        plot.setDomainStep(StepMode.INCREMENT_BY_VAL, 60000);
-        // Make left labels be an integer (no decimal places)
-        plot.getGraph().getLineLabelStyle(XYGraphWidget.Edge.LEFT).
-                setFormat(new DecimalFormat("#"));
-        // These don't seem to have an effect
-        plot.setLinesPerRangeLabel(2);
+            }
+        });
     }
 
     @Override

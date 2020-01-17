@@ -16,84 +16,149 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
+import io.reactivex.disposables.Disposable;
+import polar.com.sdk.api.PolarBleApi;
+import polar.com.sdk.api.PolarBleApiCallback;
+import polar.com.sdk.api.PolarBleApiDefaultImpl;
+import polar.com.sdk.api.model.PolarDeviceInfo;
+import polar.com.sdk.api.model.PolarHrData;
+import polar.com.sdk.api.errors.PolarInvalidArgument;
 
+
+import java.util.List;
+import java.util.UUID;
+
+import polar.com.sdk.api.PolarBleApi;
+import polar.com.sdk.api.PolarBleApiCallback;
+import polar.com.sdk.api.PolarBleApiDefaultImpl;
+import polar.com.sdk.api.errors.PolarInvalidArgument;
+import polar.com.sdk.api.model.PolarDeviceInfo;
+import polar.com.sdk.api.model.PolarHrData;
+
+import java.text.DecimalFormat;
+import java.util.List;
+import java.util.UUID;
+
+import io.reactivex.disposables.Disposable;
+
+import polar.com.sdk.api.PolarBleApi;
+import polar.com.sdk.api.PolarBleApiCallback;
+import polar.com.sdk.api.PolarBleApiDefaultImpl;
+import polar.com.sdk.api.model.PolarDeviceInfo;
+import polar.com.sdk.api.model.PolarHrData;
+import polar.com.sdk.api.errors.PolarInvalidArgument;
 
 public class MainActivity extends AppCompatActivity {
 
     private String TAG = "Polar_MainActivity";
-    private String sharedPrefsKey = "polar_device_id";
-    private String DEVICE_ID;
-    SharedPreferences sharedPreferences;
+    private String DEVICE_ID="20BEEF24";
+    public PolarBleApi api;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        sharedPreferences = this.getPreferences(Context.MODE_PRIVATE);
         checkBT();
-    }
+        final TextView textViewHR = findViewById(R.id.textViewHR);
 
-    public void onClickConnect(View view) {
-        checkBT();
-        DEVICE_ID = sharedPreferences.getString(sharedPrefsKey,"");
-        Log.d(TAG,DEVICE_ID);
-        if(DEVICE_ID.equals("")){
-            showDialog(view);
-        } else {
-            Toast.makeText(this,getString(R.string.connecting) + " " + DEVICE_ID,Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(this, ECGActivity.class);
-            intent.putExtra("id", DEVICE_ID);
-            startActivity(intent);
+        api = PolarBleApiDefaultImpl.defaultImplementation(this,
+                PolarBleApi.FEATURE_BATTERY_INFO |
+                        PolarBleApi.FEATURE_DEVICE_INFO |
+                        PolarBleApi.FEATURE_HR);
+        api.setApiCallback(new PolarBleApiCallback() {
+            @Override
+            public void blePowerStateChanged(boolean b) {
+                Log.d(TAG, "BluetoothStateChanged " + b);
+            }
+            @Override
+            public void deviceConnected(PolarDeviceInfo s) {
+                Log.d(TAG, "Device connected " + s.deviceId);
+            }
+
+            @Override
+            public void deviceConnecting(PolarDeviceInfo polarDeviceInfo) {
+            }
+
+            @Override
+            public void deviceDisconnected(PolarDeviceInfo s) {
+                Log.d(TAG, "Device disconnected " + s);
+            }
+
+            @Override
+            public void ecgFeatureReady(String s) {
+                Log.d(TAG, "ECG Feature ready " + s);
+            }
+
+            @Override
+            public void accelerometerFeatureReady(String s) {
+                Log.d(TAG, "ACC Feature ready " + s);
+            }
+
+            @Override
+            public void ppgFeatureReady(String s) {
+                Log.d(TAG, "PPG Feature ready " + s);
+            }
+
+            @Override
+            public void ppiFeatureReady(String s) {
+                Log.d(TAG, "PPI Feature ready " + s);
+            }
+
+            @Override
+            public void hrFeatureReady(String s) {
+                Log.d(TAG, "HR Feature ready " + s);
+            }
+
+            @Override
+            public void disInformationReceived(String s, UUID u, String s1) {
+                if( u.equals(UUID.fromString("00002a28-0000-1000-8000-00805f9b34fb"))) {
+                    String msg = "Firmware: " + s1.trim();
+                    Log.d(TAG, "Firmware: " + s + " " + s1.trim());
+                }
+            }
+
+            @Override
+            public void batteryLevelReceived(String s, int i) {
+                String msg = "ID: " + s + "\nBattery level: " + i;
+                Log.d(TAG, "Battery level " + s + " " + i);
+//                Toast.makeText(classContext, msg, Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void hrNotificationReceived(String s,
+                                               PolarHrData polarHrData) {
+                Log.d(TAG, "HR " + polarHrData.hr);
+                List<Integer> rrsMs = polarHrData.rrsMs;
+                String msg = String.valueOf(polarHrData.hr) + "\n";
+                for (int i : rrsMs) {
+                    msg += i + ",";
+                }
+                if (msg.endsWith(",")) {
+                    msg = msg.substring(0, msg.length() - 1);
+                }
+                Log.e("HR Notification", "HR: " +polarHrData.hr);
+                textViewHR.setText(msg);
+            }
+
+            @Override
+            public void polarFtpFeatureReady(String s) {
+                Log.d(TAG, "Polar FTP ready " + s);
+            }
+        });
+        try {
+            api.connectToDevice(DEVICE_ID);
+        } catch (PolarInvalidArgument a){
+            a.printStackTrace();
         }
     }
 
-    public void onClickConnect2(View view) {
-        checkBT();
-        DEVICE_ID = sharedPreferences.getString(sharedPrefsKey,"");
-        Log.d(TAG,DEVICE_ID);
-        if(DEVICE_ID.equals("")){
-            showDialog(view);
-        } else {
-            Toast.makeText(this,getString(R.string.connecting) + " " + DEVICE_ID,Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(this, HRActivity.class);
-            intent.putExtra("id", DEVICE_ID);
-            startActivity(intent);
-        }
-    }
 
-    public void onClickChangeID(View view) {
-        showDialog(view);
-    }
 
-    public void showDialog(View view){
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this, R.style.PolarTheme);
-        dialog.setTitle("Enter your Polar device's ID");
 
-        View viewInflated = LayoutInflater.from(getApplicationContext()).inflate(R.layout.device_id_dialog_layout,(ViewGroup) view.getRootView() , false);
-
-        final EditText input = viewInflated.findViewById(R.id.input);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
-        dialog.setView(viewInflated);
-
-        dialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                DEVICE_ID = input.getText().toString();
-                SharedPreferences.Editor editor = sharedPreferences.edit();
-                editor.putString(sharedPrefsKey, DEVICE_ID);
-                editor.apply();
-            }
-        });
-        dialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
-        dialog.show();
-    }
 
     public void checkBT(){
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
